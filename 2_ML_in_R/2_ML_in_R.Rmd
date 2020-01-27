@@ -42,11 +42,22 @@ Suggestion: use the the `group_by` and `summarise_all` functions from the `dplyr
 library(dplyr)
 
 # Calculate the mean of each attribute
+iris_means <- iris %>%
+  group_by(Species) %>%
+  summarise_all(mean)
+iris_means
 
 # Calculate the standard deviation of each attribute
+iris_sd <- iris %>%
+  group_by(Species) %>%
+  summarise_all(sd)
+iris_sd
 
 # Calculate the minimum of each attribute
-
+iris_all <- iris %>%
+  group_by(Species) %>%
+  summarise_all(list(min = min, max = max, mean = mean, stdev = sd))
+iris_all
 # Calculate the maximum of each attribute
 
 ```
@@ -60,17 +71,37 @@ Suggestion: use the `ggplot2` library. For a nice pairs plot use the `ggpairs` f
 ```{r message=FALSE}
 library(ggplot2)
 library(GGally)
+
+corr <- cor(iris[,1:4])
+corr
+plot <- ggplot(iris, aes(x = Petal.Length, y = Sepal.Length)) + 
+  geom_point(aes(col = Species))
+plot
+plot2 <- ggplot(iris, aes(x = Petal.Width, y = Sepal.Width)) + 
+  geom_point(aes(col = Species))
+plot2
+plot3 <- ggplot(iris, aes(x = Petal.Width, y = Petal.Length)) + 
+  geom_point(aes(col = Species))
+plot3
+plot4 <- ggplot(iris, aes(x = Sepal.Width, y = Sepal.Length)) + 
+  geom_point(aes(col = Species))
+plot4
+
+ggpairs(iris, aes(color = Species, alpha = 0.5), progress = FALSE)
 ```
 
 # 4) Classification using Least Squares
 
 Here we will be carrying out classification using the least squares formulation on 2 classes of the dataset.
 
-### a) Create separate datasets for the classes `setosa` and `versicolor`.
+a) Create separate datasets for the classes `setosa` and `versicolor`.
 
 ```{r}
 # your code here
-
+setosa <- iris %>%
+  filter(Species == "setosa")
+versicolor <- iris %>%
+  filter(Species== "versicolor")
 # result should be two dataframes (one for each for setosa, versicolor classes),
 # each with dim (50,5) - 4 attributes plus column for class
 stopifnot(all(dim(setosa)==c(50,5)))
@@ -78,21 +109,28 @@ stopifnot(all(dim(versicolor)==c(50,5)))
 ```
 
 
-### b) add a column to each dataset where the column is $1$ if the class is `setosa` and $-1$ otherwise.
+b) add a column to each dataset where the column is $1$ if the class is `setosa` and $-1$ otherwise.
 
 ```{r}
 # your code here
-
+setosa$output <- rep(1, length(setosa$Species))
+versicolor$output <- rep(-1, length(versicolor$Species))
 # result should add a column to each of setosa and versicolor
 stopifnot(all(dim(setosa)==c(50,6)))
 stopifnot(all(dim(versicolor)==c(50,6)))
 ```
 
 
-### c) create training and test datasets, with 20% of the data for testing. This 80 training points and 20 testing points in total (half this per class).
+c) create training and test datasets, with 20% of the data for testing. This 80 training points and 20 testing points in total (half this per class).
 
 ```{r}
-# your code here
+# your code here - see improved version!!
+set.seed(311083)
+rows <- sample(nrow(setosa))
+setosa <- setosa[rows,]
+versicolor <- versicolor[rows,]
+training.data <- rbind(setosa[1:40,], versicolor[1:40,])
+test.data <- rbind(setosa[41:50,], versicolor[41:50,])
 
 # resulting dataframes (one each for training and test data) should have
 # the appropriate sizes
@@ -102,7 +140,7 @@ stopifnot(all(dim(test.data)==c(20,6)))
 
 
 
-### d) apply the least squares solution to obtain an optimal solution for different combinations of the 4 available attributes. The code to create a list containing all the combinations of the attributes has been provided.
+d) apply the least squares solution to obtain an optimal solution for different combinations of the 4 available attributes. The code to create a list containing all the combinations of the attributes has been provided.
 
 ```{r}
 # Creates all possible combinations of attributes
@@ -113,35 +151,62 @@ attribute.combinations <- do.call(
   lapply(1:4, function(i) as.list(data.frame(combn(attribute.names, i))))
   )
 names(attribute.combinations) <- 1:length(attribute.combinations)
-
+attribute.names
 
 return.predictions <- function(attribute.names, training.data, test.data) {
   
   # Format training and test data (as matrices)
-  ### your code here
+  X_train = as.matrix(training.data[as.character(attribute.names)])
+  y_train = as.vector(training.data$output)
+  X_test = as.matrix(test.data[as.character(attribute.names)])
+  y_test = as.matrix(test.data$output)
 
   # Calculate optimal weights
-  ### your code here
+  w = solve(t(X_train)%*%X_train)%*%t(X_train)%*%y_train
   
   # Make predictions
-  ### your code here
+  predictions = X_test%*%w
 
   return(predictions)
 }
+
+return.predictions(attribute.names, training.data, test.data)
+p1 <- return.predictions(attribute.combinations[[1]], training.data, test.data)
+p2 <- return.predictions(attribute.combinations[[2]], training.data, test.data)
 ```
 
 
 
-### e) evaluate which input attributes are the best.
+e) evaluate which input attributes are the best.
 
 ```{r}
+predictions <- return.predictions(attribute.names, training.data, test.data)
+length(predictions)
 # Calculate the mean square error between some predictions and
 # the corresponding testing data
-return.mse <- function(predictions, testing.data) {
-  ### your code here
+return.mse <- function(predictions, test.data) {
+  y.test <- as.numeric(test.data$class)
+  error <- y.test - predictions
+  square.error <- error**2.0
+  mse <- mean(square.error)
   return(mse)
 }
-
+return.mse(predictions, test.data)
 # Calculate the test MSE for each the elements of attribute.combinations
 # by calling return.predictions and return.mse
+mse.df <- as.data.frame(
+  sapply(attribute.combinations, 
+         function(x) return.mse(
+           return.predictions(x, training.data, test.data),
+           test.data)
+         )
+  )
+colnames(mse.df) <- c("MSE")
+mse.df$attributes <- sapply(attribute.combinations, function(x) paste(x, collapse = ","))
+
+paste(attribute.combinations[[10]], collapse = ",") #to understand
+ggplot(mse.df, aes(x = attributes, y = MSE )) + 
+  geom_point()
+##sapply: Arg1: List (input will be elements of the list), 
+##Arg2: Function with one argument/operation
 ```
