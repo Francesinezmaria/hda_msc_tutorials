@@ -56,7 +56,31 @@ plt.show()
 # Task 3: Use the sklearn package to build a support vector classifier using a linear kernel
 # (hint: you will need from sklearn.svm import SVC). Plot the decision fuction on the data
 
+def plot_svc_decision_function(model, ax=None):
+    """Plot the decision function for a 2D SVC"""
+    if ax is None:
+        ax = plt.gca()
+    xlim = ax.get_xlim()
+    ylim = ax.get_ylim()
+    
+    # create grid to evaluate model
+    x = np.linspace(xlim[0], xlim[1], 30)
+    y = np.linspace(ylim[0], ylim[1], 30)
+    X, Y = np.meshgrid(x,y)
+    xy = np.vstack([X.ravel(), Y.ravel()]).T
+    P = model.decision_function(xy).reshape(X.shape)
+    
+    # plot decision boundary and margins
+    ax.contour(X, Y, P, colors='k',
+               levels=[-1, 0, 1], alpha=0.5,
+               linestyles=['--', '-', '--'])
+    
 
+    ax.scatter(model.support_vectors_[:, 0],
+                   model.support_vectors_[:, 1],
+                   s=300, linewidth=1, facecolors='none');
+    ax.set_xlim(xlim)
+    ax.set_ylim(ylim)
 
 # Task 4: Change the number of points in the dataset using X = X[:N] and y = y[:N]
 # and build the classifier again using a linear kernel
