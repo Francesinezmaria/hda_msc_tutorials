@@ -36,7 +36,7 @@ Here are some points to consider as you complete the project.
 	
 If you are concerned about any aspect of the project, ask us. Communication is hard; ask us to clarify if something is confusing or something is troubling you.
 
-
+The presentation will be 15 minutes long. Plan to present for 10 minutes and prepare to be asked a few questions afterwards.
 
 
 
